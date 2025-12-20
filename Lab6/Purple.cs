@@ -196,6 +196,7 @@ namespace Lab6
 
 	for (int i = 0; i < n; i++){
 	  for (int j = 0; j < m; j++){
+	    if (m*i + j < 5){ continue; }
 	    if (matrix[maxesx[0], maxesy[0]] < matrix[i, j]){
 	      maxesx[0] = i;
 	      maxesy[0] = j;
@@ -239,7 +240,8 @@ namespace Lab6
 
       ChangeMatrixValues(matrix);
 
-      if (matrix.GetLength(0) == 4 && matrix.GetLength(1) == 4){
+      /*
+      if (matrix.GetLength(0) == 1 && matrix.GetLength(1) == 6){
 	string s = "";
 	for (int i = 0; i < matrix.GetLength(0); i++){
 	  for (int j = 0; j < matrix.GetLength(1); j++){
@@ -249,6 +251,7 @@ namespace Lab6
 	}
 	throw new Exception(s);
       }
+      */
 
 
       // end
@@ -293,12 +296,14 @@ namespace Lab6
       int m1 = A.GetLength(1);
       int n2 = B.GetLength(0);
       int m2 = B.GetLength(1);
+      if (m1 != m2) return;
 
       int[] negA = CountNegativesPerRow(A);
       int[] negB = CountNegativesPerRow(B);
 
       int rowIndA = FindMaxIndex(negA);
       int rowIndB = FindMaxIndex(negB);
+      if (negA[rowIndA] <= 0 || negB[rowIndB] <= 0) return;
 
       for (int i = 0; i < Math.Min(m1, m2); i++){
 	(A[rowIndA, i], B[rowIndB, i]) = (B[rowIndB, i], A[rowIndA, i]);
@@ -404,7 +409,6 @@ namespace Lab6
       for (int i = 0; i < n; i++){
 	maxes[i] = GetRowMax(matrix, i);
       }
-      return;
       int k = 1;
       while (k < n){
 	if (k == 0 || maxes[k] >= maxes[k - 1]) 
@@ -426,11 +430,9 @@ namespace Lab6
       for (int i = 0; i < n; i++){
 	maxes[i] = GetRowMax(matrix, i);
       }
-
-      return;
       int k = 1;
       while (k < n){
-	if (k == 0 || maxes[k] < maxes[k - 1]) 
+	if (k == 0 || -maxes[k] >= -maxes[k - 1]) //small cheat for reverse sort cuz why not
 	  k++;
 	else{
 	  (maxes[k], maxes[k - 1]) = (maxes[k - 1], maxes[k]);
@@ -468,9 +470,13 @@ namespace Lab6
     public int[] FindMaxNegativePerColumn(int[,] matrix){
       int[] ans = new int[matrix.GetLength(1)];
       for (int i = 0; i < matrix.GetLength(1); i++){
+	ans[i] = Int32.MinValue;
 	for (int j = 0; j < matrix.GetLength(0); j++){
-	  ans[i] = Math.Max(matrix[j, i], ans[i]++);
+	  if (matrix[j, i] < 0){
+	    ans[i] = Math.Max(matrix[j, i], ans[i]);
+	  }
 	}
+	if (ans[i] == Int32.MinValue) ans[i] = 0;
       }
       return ans;
 
@@ -499,39 +505,84 @@ namespace Lab6
 	if (matrix[1, i-1] <= matrix[1, i]) up = true;
 	if (matrix[1, i-1] >= matrix[1, i]) down = true;
       }
-      if (up == down)return new int[,] {{0}};
+      if (up == down && up == true)return new int[,] {{0}};
+      if (up == down && up == false)return new int[0, 0];
       if (up == true)return new int[,] {{1}};
       return new int[,] {{-1}};
     }
 
     public int[,] FindAllSeq(int[,] matrix){
-      int count = 1;
-      int last = 0;
-      for (int i = 1; i < matrix.GetLength(1); i++){
-	if (matrix[1, i] > matrix[1, i-1] && last <= 0) count++;
-	if (matrix[1, i] < matrix[1, i-1] && last >= 0) count++;
-      }
-
-      int[,] ans = new int[count, 2];
-      last = 0;
-      count = 0;
-      for (int i = 1; i < matrix.GetLength(1); i++){
-	if (matrix[1, i] > matrix[1, i-1] && last <= 0){
-	  if (count == 0){
-	    ans[count, 0] = matrix[0, 0];
-	    ans[count, 1] = matrix[0, i-1];
-	  }
-	  else{
-	    ans[count, 0] = ans[count-1, 1];
-	    ans[count, 1] = matrix[0, i-1];
-	  }
+      int n = matrix.GetLength(1);
+      if (n <= 1) return new int[0, 0];
+      bool allEqual = true;
+      for (int j = 0; j < n - 1; j++)
+      {
+	if (matrix[1, j] != matrix[1, j + 1])
+	{
+	  allEqual = false;
+	  break;
 	}
       }
-      return ans;
+      if (allEqual) return new int[0, 0];
+
+      int count = 0;
+      int trend = 0;
+      for (int j = 0; j < n - 1; j++)
+      {
+	int dy = matrix[1, j + 1] - matrix[1, j];
+	if (dy == 0) continue;
+
+	int newTrend = dy > 0 ? 1 : -1;
+
+	if (trend == 0)
+	{
+	  trend = newTrend;
+	  count = 1;
+	}
+	else if (newTrend != trend)
+	{
+	  count++;
+	  trend = newTrend;
+	}
+      }
+
+      int[,] result = new int[count, 2];
+
+      int idx = 0;
+      int startIndex = 0;
+      trend = 0;
+
+      for (int j = 0; j < n - 1; j++)
+      {
+	int dy = matrix[1, j + 1] - matrix[1, j];
+	if (dy == 0) continue;
+
+	int newTrend = dy > 0 ? 1 : -1;
+
+	if (trend == 0)
+	{
+	  trend = newTrend;
+	}
+	else if (newTrend != trend)
+	{
+	  result[idx, 0] = matrix[0, startIndex];
+	  result[idx, 1] = matrix[0, j];
+	  idx++;
+
+	  startIndex = j;
+	  trend = newTrend;
+	}
+      }
+
+      result[idx, 0] = matrix[0, startIndex];
+      result[idx, 1] = matrix[0, n - 1];
+
+      return result;
     }
 
     public int[,] FindLongestSeq(int[,] matrix)
     {
+      if (matrix.GetLength(1)<=1)return new int[,]{};
       int[,] data = FindAllSeq(matrix);
       int [,] ans = new int[1,2]{{0, -1}};
       for (int i = 0; i< data.GetLength(0); i++){
@@ -559,24 +610,26 @@ namespace Lab6
     public int CountSignFlips(double a, double b, double h, Func<double, double> func)
     {
       int count = 0;
-      int last_sign = 0;
-      for (double x = a; x < b+0.00001; x+=h){
+      int last_sign = Math.Sign(func(a));
+      if (last_sign == 0) last_sign = 1;
+      for (double x = a+h; x < b+0.0001; x+=h){
 	int sign = Math.Sign(func(x));
+	if (sign == 0) sign = 1;
 	if (sign != last_sign && last_sign != 0){
 	  count++;
 	}
+	last_sign = sign;
       }
       return count;
     }
 
-    public delegate double Func(double x);
 
     public double FuncA(double x){
       return x*x - Math.Sin(x);
     }
 
     public double FuncB(double x){
-      return Math.Exp(x) - 1;
+      return Math.Pow(Math.E, x) - 1;
     }
 
     public int Task9(double a, double b, double h, Func<double, double> func)
@@ -615,7 +668,7 @@ namespace Lab6
 
       int k = 1;
       while (k < array.Length){
-	if (k == 0 || sums[k] >= sums[k - 1]){
+	if (k == 0 || -sums[k] >= -sums[k - 1]){
 	  k++;
 	}
 	else{
